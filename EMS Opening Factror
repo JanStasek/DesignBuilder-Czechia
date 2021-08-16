@@ -1,0 +1,53 @@
+!- Tento kod umoznuje ovladat otevreni oken pri Calculated NatVent na zaklade teploty vnitrniho vzduchu, casu a deste
+
+!- Senzor pro zjisteni teploty v zone
+EnergyManagementSystem:Sensor,
+   Zone_Mean_Air_Temperature,
+   3XNPPracovnaJZ:PracovnaJZ,
+   Zone Mean Air Temperature;
+
+!- Indikator, zda prsi
+EnergyManagementSystem:Sensor,
+   Site_Rain_Status,
+   Environment,
+   Site Rain Status;
+
+!- Smycka pro ovladani otevirani jednotlivych oken
+<ForAllExternalWindows>
+EnergyManagementSystem:Actuator,
+   Venting_Opening_Factor_<LoopWindowVariableName>,
+   <LoopWindowIDFName>,
+   AirFlow Network Window/Door Opening,
+   Venting Opening Factor;
+<LoopNextWindow>
+
+!- Zadani programu EMS s volanim na zacatku kazdeho vypoctoveho kroku
+EnergyManagementSystem:ProgramCallingManager,
+   CMName,
+   BeginTimestepBeforePredictor,
+    EMSProgramName;
+
+!- EMS program nastavujici podil otevrene plochy vyplni otvoru
+EnergyManagementSystem:Program,
+    EMSProgramName,
+    IF (Zone_Mean_Air_Temperature < 20 || Site_Rain_Status == true),
+       !- Pokud je teplota vzduchu v zone mensi nez 20 stupnu nebo prsi (dostupne v zavislosti na zdroji dat), okna jsou zavrena vzdy
+       <ForAllExternalWindows>
+       SET Venting_Opening_Factor_<LoopWindowVariableName> = 0,
+       <LoopNextWindow>
+    ELSEIF (Hour < 6),
+       !- Pokud je teplota vyssi nez 20 stupnu, budou okna do 6:00 otevrena na 100%
+       <ForAllExternalWindows>
+       SET Venting_Opening_Factor_<LoopWindowVariableName> = 1,
+       <LoopNextWindow>
+    ELSEIF (Hour < 20),
+       !- Pokud je teplota vyssi nez 20 stupnu, budou okna od 6:00 do 20:00 otevrena na 5%
+       <ForAllExternalWindows>
+       SET Venting_Opening_Factor_<LoopWindowVariableName> = 0.05,
+       <LoopNextWindow>
+    ELSE,
+       !- Pokud je teplota vyssi nez 20 stupnu, budou okna od 20:00 otevrena na 100%
+       <ForAllExternalWindows>
+       SET Venting_Opening_Factor_<LoopWindowVariableName> = 1,
+       <LoopNextWindow>
+    ENDIF;
