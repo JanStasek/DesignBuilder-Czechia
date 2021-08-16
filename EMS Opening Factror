@@ -3,7 +3,7 @@
 !- Senzor pro zjisteni teploty v zone
 EnergyManagementSystem:Sensor,
    Zone_Mean_Air_Temperature,
-   3XNPPracovnaJZ:PracovnaJZ,
+   3XNPPracovnaJZ:PracovnaJZ, !- Nutno upravit dle názvu reálné zóny v modelu, nebo použít smyčku pro více zón
    Zone Mean Air Temperature;
 
 !- Indikator, zda prsi
