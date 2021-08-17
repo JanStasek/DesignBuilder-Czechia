@@ -25,29 +25,41 @@ EnergyManagementSystem:Actuator,
 EnergyManagementSystem:ProgramCallingManager,
    CMName,
    BeginTimestepBeforePredictor,
-    EMSProgramName;
+   EMSProgramName;
 
 !- EMS program nastavujici podil otevrene plochy vyplni otvoru
 EnergyManagementSystem:Program,
     EMSProgramName,
     IF (Zone_Mean_Air_Temperature < 20 || Site_Rain_Status == true),
        !- Pokud je teplota vzduchu v zone mensi nez 20 stupnu nebo prsi (dostupne v zavislosti na zdroji dat), okna jsou zavrena vzdy
-       <ForAllExternalWindows>
+       <ForAllExternalWindows> {ZoneIDFName = 3XNPPracovnaJZ:PracovnaJZ} !- Smycka s omezenym rozsahem pouze pro konkretni zonu
        SET Venting_Opening_Factor_<LoopWindowVariableName> = 0,
        <LoopNextWindow>
     ELSEIF (Hour < 6),
        !- Pokud je teplota vyssi nez 20 stupnu, budou okna do 6:00 otevrena na 100%
-       <ForAllExternalWindows>
+       <ForAllExternalWindows> {ZoneIDFName = 3XNPPracovnaJZ:PracovnaJZ} !- Smycka s omezenym rozsahem pouze pro konkretni zonu
        SET Venting_Opening_Factor_<LoopWindowVariableName> = 1,
        <LoopNextWindow>
     ELSEIF (Hour < 20),
        !- Pokud je teplota vyssi nez 20 stupnu, budou okna od 6:00 do 20:00 otevrena na 5%
-       <ForAllExternalWindows>
+       <ForAllExternalWindows> {ZoneIDFName = 3XNPPracovnaJZ:PracovnaJZ} !- Smycka s omezenym rozsahem pouze pro konkretni zonu
        SET Venting_Opening_Factor_<LoopWindowVariableName> = 0.05,
        <LoopNextWindow>
     ELSE,
        !- Pokud je teplota vyssi nez 20 stupnu, budou okna od 20:00 otevrena na 100%
-       <ForAllExternalWindows>
+       <ForAllExternalWindows> {ZoneIDFName = 3XNPPracovnaJZ:PracovnaJZ} !- Smycka s omezenym rozsahem pouze pro konkretni zonu
        SET Venting_Opening_Factor_<LoopWindowVariableName> = 1,
        <LoopNextWindow>
     ENDIF;
+
+!- Extra vystupy pro kontrolu modelu (zakomentovano, aktivujte v pripade potreby)
+!- Output:Variable, *, AFN Surface Venting Window or Door Opening Factor, Timestep;
+!- Output:Variable, *, AFN Surface Venting Window or Door Opening Factor, Hourly;
+!- Output:Variable, *, AFN Surface Venting Availability Status, Timestep;
+!- Output:Variable, *, AFN Surface Venting Availability Status, Hourly;
+!- Output:Variable, *, AFN Surface Venting Window or Door Opening Modulation Multiplier, Timestep;
+!- Output:Variable, *, AFN Surface Venting Window or Door Opening Modulation Multiplier, Hourly;
+!- Output:Variable, *, AFN Surface Venting Inside Setpoint Temperature, Timestep;
+!- Output:Variable, *, AFN Surface Venting Inside Setpoint Temperature, Hourly;
+!- Output:Variable, Environment, Site Rain Status, Timestep;
+!- Output:Variable, Environment, Site Rain Status, Hourly;
