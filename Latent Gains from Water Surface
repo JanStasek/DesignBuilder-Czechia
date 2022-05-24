@@ -1,0 +1,95 @@
+!- Tento kod umoznuje do vypoctu zahrnout vypar z vodni hladiny
+!- Pro spravnou funkci je potreba v zone, ve ktere ma byt odpar zohlednen aktivovat Miscelleneous Heat Gains a nastavit hodnotu 1 u Latent fraciton a 0 u zbylých slozek.
+
+!- Promenna pro ulozeni teploty povrchu vody
+EnergyManagementSystem:GlobalVariable,
+   WaterSurfaceTemp;
+
+!- Promenna pro ulozeni plochy vodni hladiny
+EnergyManagementSystem:GlobalVariable,
+   WaterSurfaceArea;
+
+!- Promenna pro ulozeni mnozstvi vyparene vody
+EnergyManagementSystem:GlobalVariable,
+   WaterSurfaceEvap;
+
+!- Promenna pro ulozeni rychlosti proudeni u povrchu vody
+EnergyManagementSystem:GlobalVariable,
+   WaterSurfaceAirSpeed;
+
+!- Senzor teploty vzduchu v mistnosti
+EnergyManagementSystem:Sensor,
+   Zone_Mean_Air_Temperature,
+   BLOCK1:ZONE1, !- Nutno upravit dle nazvu realne zony v modelu, nebo pouzit smycku pro vice zon
+   Zone Mean Air Temperature;
+
+!- Senzor vlhkosti vzduchu v mistnosti
+EnergyManagementSystem:Sensor,
+   Zone_Mean_Air_Humidity_Ratio,
+   BLOCK1:ZONE1, !- Nutno upravit dle nazvu realne zony v modelu, nebo pouzit smycku pro vice zon
+   Zone Mean Air Humidity Ratio;
+
+!- Senzor tlaku vzduchu
+EnergyManagementSystem:Sensor,
+   Site_Outdoor_Air_Barometric_Pressure,
+   Environment,
+   Site Outdoor Air Barometric Pressure;
+
+!- Podlahova plocha zony
+EnergyManagementSystem:InternalVariable,
+   Zone_Floor_Area,
+   BLOCK1:ZONE1, !- Nutno upravit dle nazvu realne zony v modelu, nebo pouzit smycku pro vice zon
+   Zone Floor Area;
+
+!- Actuator pro nastaveni velikosti vnitrnich zisku
+EnergyManagementSystem:Actuator,
+   Power_Level,
+   BLOCK1:ZONE1 MISCELLANEOUS GAIN, !- Nutno upravit dle nazvu realne zony v modelu, nebo pouzit smycku pro vice zon
+   OtherEquipment,
+   Power Level;
+
+!- Actuator pro nastaveni schedule pro latentni zisky, mozno vyuzit pro zohledneni zakryti hladiny nebo vypinani fontany apod.
+EnergyManagementSystem:Actuator,
+   Schedule_Value,
+   WATERLATENTGAINSSCHEDULE,
+   Schedule:Compact,
+   Schedule Value;
+
+!- Pridani noveho typu vystupu pro vypsani produkovane vlhkosti
+EnergyManagementSystem:OutputVariable,
+   Water Surface Evaporation [kg/s], !- Name
+   WaterSurfaceEvap , !- EMS Variable Name
+   Summed , !- Type of Data in Variable
+   ZoneTimeStep ; !- Update Frequency
+
+EnergyManagementSystem:ProgramCallingManager,
+   Water Surface Evaporation, !- Name
+   AfterPredictorBeforeHVACManagers,  !- EnergyPlus Model Calling Point
+   WaterSurfaceEvaporation;  !- Program Name
+
+EnergyManagementSystem:Program,
+   WaterSurfaceEvaporation, !- Program Name
+   SET WaterSurfaceTemp = 15, !- Zadani povrchove teploty vody (°C)
+   SET WaterSurfaceArea = 20, !- Zadani plochy vodni hladiny (m2)
+   SET WaterSurfaceAirSpeed = 2, !- Zadani rychlosti proudeni vzduchu u hladiny (m\s)
+   SET EvaporativeCoef = 25 + 19 * WaterSurfaceAirSpeed,
+   SET AirHumidityRationWaterSurface = @WFnTdbRhPb WaterSurfaceTemp 1 Site_Outdoor_Air_Barometric_Pressure,
+   SET HumidityRatioDelta = AirHumidityRationWaterSurface - Zone_Mean_Air_Humidity_Ratio,
+   SET WaterSurfaceEvap = EvaporativeCoef * WaterSurfaceArea * HumidityRatioDelta / 3600,
+   SET HeatOfVaporization = @HfgAirFnWTdb AirHumidityRationWaterSurface WaterSurfaceTemp,
+   SET HeatGainAbsolut = HeatOfVaporization * WaterSurfaceEvap,
+   SET PowerLevelTeor = HeatGainAbsolut / Zone_Floor_Area,
+   SET Power_Level = @Max 0 PowerLevelTeor;
+
+!- Doplnkove vystupy pro pripad potreby
+Output:Variable, *, Water Surface Evaporation, Timestep;
+Output:Variable, *, Water Surface Evaporation, Hourly;
+Output:Variable, *, Water Surface Evaporation, Daily;
+Output:Variable, *, Water Surface Evaporation, Monthly;
+Output:Variable, *, Water Surface Evaporation, RunPeriod;
+
+!- EMS Debug
+!- Output:EnergyManagementSystem,
+!-    Verbose,                    !- Actuator Availability Dictionary Reporting
+!-    Verbose,                    !- Internal Variable Availability Dictionary Reporting
+!-    Verbose;                 !- EMS Runtime Language Debug Output Level
