@@ -1,0 +1,55 @@
+!- Tento kod ma za ucel ridit teplotu pred prvkem Evaporative Cooler pro dosazeni jeho provozu jako zvlhcovace
+
+EnergyManagementSystem:Sensor,
+   WZ1,
+   L0:Z1, !- Nazev zon(y) na zaklade ktere se ma ridit vlhkost. V pripade vice zon bude potreba doplnit smycku a hledani minima etalpie/absolutni vlhkosti?.
+   Zone Mean Air Humidity Ratio;
+
+EnergyManagementSystem:Sensor,
+   TZ1,
+   L0:Z1, !- Nazev zon(y) na zaklade ktere se ma ridit vlhkost. V pripade vice zon bude potreba doplnit smycku a hledani minima etalpie/absolutni vlhkosti?.
+   Zone Mean Air Temperature;
+
+EnergyManagementSystem:Sensor,
+   barometricPressure,
+   Environment,
+   Site Outdoor Air Barometric Pressure;
+
+EnergyManagementSystem:Sensor,
+   OAHumidityRatio,
+   Environment,
+   Site Outdoor Air Humidity Ratio;
+
+EnergyManagementSystem:Actuator,
+   scheduleHC,
+   SCHEDULEHC, !- casovy rozvhr nastavujici potrebnou teplotu pred Evaporative Cooler pro dosazeni efektu vlhceni
+   Schedule:Compact,
+   Schedule Value;
+
+EnergyManagementSystem:Actuator,
+   scheduleEVCOOLAVL,
+   EVCOOL AVL SCHEDULE, !- casovy rozvhr ovladajici dostupnost vlhceni
+   Schedule:Compact,
+   Schedule Value;
+
+EnergyManagementSystem:ProgramCallingManager,
+   PCM,
+   BeginTimestepBeforePredictor,
+   HumidityControl;
+
+EnergyManagementSystem:Program,
+   HumidityControl,
+   SET Wi = WZ1, !- mnozstvi vlhkosti v interieru kg/kg
+   SET Wmin = @WFnTdbRhPb TZ1 0.3 barometricPressure, !- mnozstvi vlhkosti potrebne pro zajisteni minimalni vlhkosti 30%
+   SET Wreq = Wmin / 0.7 !- zohledneni ucinnosti zvlhcovace
+   IF ((Wmin - Wi) > 0),
+	  SET scheduleEVCOOLAVL = 1, !- zapnutni zvlhcovace
+	  SET HHC = @HFnTdbW 22 Wreq, !- vypocet potrebne entalpie vzduchu po vlhceni
+	  SET scheduleHC = @TdbFnHW HHC OAHumidityRatio, !- vypocet potrebne teploty za ohrivacem
+   ENDIF;
+
+!- Podrobny vypis hodnot v kodu EMS pro ucely lazeni
+!- Output:EnergyManagementSystem,
+!-    None,                    !- Actuator Availability Dictionary Reporting
+!-    None,                    !- Internal Variable Availability Dictionary Reporting
+!-    Verbose;                 !- EMS Runtime Language Debug Output Level
