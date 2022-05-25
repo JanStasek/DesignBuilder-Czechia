@@ -1,34 +1,52 @@
 !- Tento kod ma za ucel ridit teplotu pred prvkem Evaporative Cooler pro dosazeni jeho provozu jako zvlhcovace
 
+!- Senzory pro ziskani vlhkosti vzduchu v zonach s tagem AHU01
+<ForAllZones> {Tag=AHU01}
 EnergyManagementSystem:Sensor,
-   WZ1,
-   L0:Z1, !- Nazev zon(y) na zaklade ktere se ma ridit vlhkost. V pripade vice zon bude potreba doplnit smycku a hledani minima etalpie/absolutni vlhkosti?.
+   W_<LoopZoneVariableName>,
+   <LoopZoneIDFName>,
    Zone Mean Air Humidity Ratio;
+<LoopNextZone>
 
+!- Senzory pro ziskani teploty vzduchu v zonach s tagem AHU01
+<ForAllZones> {Tag=AHU01}
 EnergyManagementSystem:Sensor,
-   TZ1,
-   L0:Z1, !- Nazev zon(y) na zaklade ktere se ma ridit vlhkost. V pripade vice zon bude potreba doplnit smycku a hledani minima etalpie/absolutni vlhkosti?.
+   T_<LoopZoneVariableName>,
+   <LoopZoneIDFName>,
    Zone Mean Air Temperature;
+<LoopNextZone>
 
+!- Senzory pro ziskani vlhkosti vzduchu v zonach s tagem AHU01
+<ForAllZones> {Tag=AHU01}
+EnergyManagementSystem:Sensor,
+   RH_<LoopZoneVariableName>,
+   <LoopZoneIDFName>,
+   Zone Air Relative Humidity;
+<LoopNextZone>
+
+!- Senzory aktualniho tlaku vzduchu
 EnergyManagementSystem:Sensor,
    barometricPressure,
    Environment,
    Site Outdoor Air Barometric Pressure;
 
+!- Senzor vlhkosti venkovniho vzduchu
 EnergyManagementSystem:Sensor,
    OAHumidityRatio,
    Environment,
    Site Outdoor Air Humidity Ratio;
 
+!- Ovladany casovy rozvhr pro teplotu za ohrivacem
 EnergyManagementSystem:Actuator,
    scheduleHC,
-   SCHEDULEHC, !- casovy rozvhr nastavujici potrebnou teplotu pred Evaporative Cooler pro dosazeni efektu vlhceni
+   AHU 01 HC SCHEDULE,
    Schedule:Compact,
    Schedule Value;
 
+!- Ovladany casovy rozvrh pro zapinani/vypinani vlhceni
 EnergyManagementSystem:Actuator,
    scheduleEVCOOLAVL,
-   EVCOOL AVL SCHEDULE, !- casovy rozvhr ovladajici dostupnost vlhceni
+   AHU 01 EV COOL AVL,
    Schedule:Compact,
    Schedule Value;
 
@@ -39,17 +57,28 @@ EnergyManagementSystem:ProgramCallingManager,
 
 EnergyManagementSystem:Program,
    HumidityControl,
-   SET Wi = WZ1, !- mnozstvi vlhkosti v interieru kg/kg
-   SET Wmin = @WFnTdbRhPb TZ1 0.3 barometricPressure, !- mnozstvi vlhkosti potrebne pro zajisteni minimalni vlhkosti 30%
-   SET Wreq = Wmin / 0.7 !- zohledneni ucinnosti zvlhcovace
+   SET RHmin = 100,                                       !- nastaveni maximalni hodnoty relativni vlhkosti 100%
+   <ForAllZones> {Tag=AHU01}                              !- nalezeni zony s minimalni relativni vlhkosti (prochazi se pouze zony s tagem AHU01)
+	IF (RH_<LoopZoneVariableName> < RHmin),
+		SET Wimin = W_<LoopZoneVariableName>,    !- hmotnostni vlhkost v zone s nejnizsi relativni vlhkosti
+		SET Timin = T_<LoopZoneVariableName>,    !- teplota v zone s nejnizsi relativni vlhkosti
+		SET RHmin = RH_<LoopZoneVariableName>,   !- nastaveni nove hodnoty RHmin
+	ENDIF,
+   <LoopNextZone>
+   SET Wi = Wimin,                                        !- mnozstvi vlhkosti v interieru kg/kg v zone s nejnizsi vlhkosti
+   SET Wmin = @WFnTdbRhPb Timin 0.3 barometricPressure,   !- mnozstvi vlhkosti potrebne pro zajisteni minimalni vlhkosti 30%
+   SET Wreq = Wmin / 0.7                                  !- zohledneni ucinnosti zvlhcovace (v pripade pouziti DirectReasearchSpecial)
    IF ((Wmin - Wi) > 0),
-	  SET scheduleEVCOOLAVL = 1, !- zapnutni zvlhcovace
-	  SET HHC = @HFnTdbW 22 Wreq, !- vypocet potrebne entalpie vzduchu po vlhceni
+	  SET scheduleEVCOOLAVL = 1,                     !- zapnutni zvlhcovace
+	  SET HHC = @HFnTdbW 22 Wreq,                    !- vypocet potrebne entalpie vzduchu po vlhceni
 	  SET scheduleHC = @TdbFnHW HHC OAHumidityRatio, !- vypocet potrebne teploty za ohrivacem
+   ELSE,
+	  SET scheduleEVCOOLAVL = 0,                     !- vypnutni zvlhcovace
+	  SET scheduleHC = 20,                           !- nastaveni pozadovane teploty za ohrivacem
    ENDIF;
 
 !- Podrobny vypis hodnot v kodu EMS pro ucely lazeni
 !- Output:EnergyManagementSystem,
 !-    None,                    !- Actuator Availability Dictionary Reporting
-!-    None,                    !- Internal Variable Availability Dictionary Reporting
+!-    None,                    !- Internal Variable Availability Dictionary Reporting!-
 !-    Verbose;                 !- EMS Runtime Language Debug Output Level
