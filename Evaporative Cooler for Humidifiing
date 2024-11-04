@@ -70,7 +70,7 @@ EnergyManagementSystem:Program,
    SET Wreq = Wmin / 0.7                                  !- zohledneni ucinnosti zvlhcovace (v pripade pouziti DirectReasearchSpecial)
    IF ((Wmin - Wi) > 0),
 	  SET scheduleEVCOOLAVL = 1,                     !- zapnutni zvlhcovace
-	  SET HHC = @HFnTdbW 22 Wreq,                    !- vypocet potrebne entalpie vzduchu po vlhceni
+	  SET HHC = @HFnTdbW 22 Wreq,                    !- vypocet potrebne entalpie vzduchu po vlhceni pro teplotu privadeneho vzduchu 22 °C
 	  SET scheduleHC = @TdbFnHW HHC OAHumidityRatio, !- vypocet potrebne teploty za ohrivacem
    ELSE,
 	  SET scheduleEVCOOLAVL = 0,                     !- vypnutni zvlhcovace
